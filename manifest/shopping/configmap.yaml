@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shopping-config
+data:
+  # Thêm các biến môi trường không nhạy cảm từ các file .env.dev
+  # Ví dụ:
+  MONGODB_URI: "mongodb://mongodb:27017"
+  MSG_QUEUE_URL: "amqp://rabbitmq:5672"
+  APP_SECRET: jg_youtube_tutorial
+  PORT: "8003"
+  EXCHANGE_NAME: 'ONLINE_STORE'

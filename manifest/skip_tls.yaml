@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: containerd-config
+  namespace: kube-system
+data:
+  config.toml: |+
+    version = 2
+    [plugins."io.containerd.grpc.v1.cri".registry]
+      [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."registry.cloudemon.me"]
+          endpoint = ["https://registry.cloudemon.me"]
+      [plugins."io.containerd.grpc.v1.cri".registry.configs]
+        [plugins."io.containerd.grpc.v1.cri".registry.configs."registry.cloudemon.me".tls]
+          insecure_skip_verify = true
+        [plugins."io.containerd.grpc.v1.cri".registry.configs."registry.cloudemon.me".auth]
+          username = "robot$worker-node"
+          password = "hxxQlkfj4oBuz2lwC4uxmNhWBig4paaq"
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: containerd-config-updater
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      name: containerd-config-updater
+  template:
+    metadata:
+      labels:
+        name: containerd-config-updater
+    spec:
+      hostPID: true # Cần thiết để có thể restart containerd
+      containers:
+      - name: config-updater
+        image: ubuntu:20.04 # hoặc sử dụng image nhẹ hơn như busybox
+        securityContext:
+          privileged: true # Cần quyền privileged để thao tác với system services
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -ex
+          # Backup config cũ
+          cp /host/etc/containerd/config.toml /host/etc/containerd/config.toml.bak || true
+
+          # Copy config mới
+          cp /config/config.toml /host/etc/containerd/config.toml
+
+          # Set permissions
+          chmod 644 /host/etc/containerd/config.toml
+
+          # Restart containerd service
+          nsenter --target 1 --mount --uts --ipc --net -- systemctl restart containerd
+
+          # Giữ container chạy để có thể check logs
+          sleep infinity
+        volumeMounts:
+        - name: config
+          mountPath: /config
+        - name: host-root
+          mountPath: /host
+      volumes:
+      - name: config
+        configMap:
+          name: containerd-config
+          items:
+          - key: config.toml
+            path: config.toml
+      - name: host-root
+        hostPath:
+          path: /
