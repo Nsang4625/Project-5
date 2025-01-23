@@ -26,3 +26,10 @@ resource "digitalocean_record" "name" {
   name   = "api"
   value = "157.230.192.136"
 }
+
+resource "digitalocean_record" "argocd" {
+  domain = data.digitalocean_domain.main.id
+  type   = "A"
+  name   = "argo"
+  value = "157.230.192.136"
+}
